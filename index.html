@@ -51,6 +51,10 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.55; margin
 .label a { color: inherit; }
 
 /* hero */
+.film { margin: 0 0 36px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.film video { display: block; width: min(100%, 80vh, 860px); aspect-ratio: 1; height: auto; border-radius: 4px;
+  background: var(--surface); box-shadow: 0 1px 0 var(--rule), 0 12px 32px rgba(0, 0, 0, .14); }
+.film figcaption { font-size: 14px; color: var(--muted); max-width: 70ch; text-align: center; }
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 32px; align-items: start; }
 .hero > * { min-width: 0; }
 h1 { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: clamp(40px, 6vw, 64px);
@@ -143,6 +147,11 @@ footer a, .lede a, .section-lede a { color: var(--river); }
 </style>
 
 <div class="wrap">
+  <figure class="film">
+    <video src="rivers.mp4" poster="rivers-poster.jpg" autoplay muted loop playsinline preload="auto"
+      aria-label="Painted animation: a river with ten crossings reshapes into one different river after another, fording two dirt tracks"></video>
+    <figcaption>Forty of the 4,892 rivers with ten crossings, each followed by one whose crossings lie far from its own.</figcaption>
+  </figure>
   <section class="hero">
     <div>
       <div class="label">OEIS <a href="https://oeis.org/A076906">A076906</a> · A076907 · A077550 and relatives</div>
