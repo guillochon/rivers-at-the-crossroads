@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rivers at the Crossroads</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a road-atlas sheet.  Header and a large viewer of the selected river side by side (stacked on phones),
+   then the gallery of every curve for the chosen n, then the count table and a short method note.
+   Roads are charcoal with an ochre centre line; the river is hydrographic blue with a paper casing, so each
+   crossing reads as a bridge. */
+:root {
+  --paper: #edf1ee;
+  --surface: #f8faf8;
+  --ink: #1a2321;
+  --muted: #586863;
+  --rule: #d2dad6;
+  --road: #3b4045;
+  --centre: #d49c17;
+  --river: #1c5dab;
+  --river-faint: #c9dbef;
+  --fix: #a8432b;
+  --font-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --font-label: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1416; --surface: #141c1f; --ink: #e2eae7; --muted: #92a29d; --rule: #26333a;
+    --road: #7f878e; --centre: #e2b13a; --river: #62a9ff; --river-faint: #1b3150; --fix: #f08b6c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1416; --surface: #141c1f; --ink: #e2eae7; --muted: #92a29d; --rule: #26333a;
+  --road: #7f878e; --centre: #e2b13a; --river: #62a9ff; --river-faint: #1b3150; --fix: #f08b6c;
+  color-scheme: dark;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px;
+  display: flex; flex-direction: column; gap: 40px; }
+
+.label { font-family: var(--font-label); font-weight: 600; font-size: 13px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--muted); }
+.label a { color: inherit; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 32px; align-items: start; }
+.hero > * { min-width: 0; }
+h1 { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: clamp(40px, 6vw, 64px);
+  line-height: .98; margin: 6px 0 18px; text-wrap: balance; color: var(--river); }
+.lede { margin: 0 0 14px; max-width: 60ch; }
+.lede.muted { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.fact { border-top: 2px solid var(--road); padding-top: 8px; }
+.fact b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 20px; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--muted); }
+
+.viewer { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px; }
+.viewer svg { width: 100%; height: auto; aspect-ratio: 1; display: block; max-width: 100%; }
+.viewer .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; }
+.itin { font-family: var(--font-label); font-weight: 500; font-size: 18px; letter-spacing: .06em; color: var(--ink);
+  overflow-wrap: anywhere; }
+.itin i { font-style: normal; color: var(--muted); padding: 0 .18em; }
+.viewer .sub { font-size: 13px; color: var(--muted); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: end; }
+.group { display: flex; flex-direction: column; gap: 6px; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; background: var(--surface); }
+.seg button { font: 500 15px/1 var(--font-mono); color: var(--ink); background: transparent; border: 0;
+  border-right: 1px solid var(--rule); padding: 9px 13px; cursor: pointer; min-width: 40px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--road); color: var(--surface); }
+.seg button:focus-visible, select:focus-visible, .card:focus-visible { outline: 2px solid var(--river); outline-offset: 2px; }
+select { font: 500 15px var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 8px 10px; max-width: 100%; }
+.count-note { font-size: 14px; color: var(--muted); }
+.count-note b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+
+/* gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 4px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px; text-align: left; font: inherit; color: inherit; }
+.card svg { width: 100%; height: auto; aspect-ratio: 1; display: block; }
+.card .cap { font-family: var(--font-label); font-size: 12px; letter-spacing: .05em; color: var(--muted);
+  padding: 0 3px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.sym .cap { color: var(--river); }
+.card[aria-current="true"] { border-color: var(--river); box-shadow: inset 0 0 0 1px var(--river); }
+
+/* svg layers */
+.road { stroke: var(--road); stroke-linecap: butt; fill: none; }
+.centre { stroke: var(--centre); fill: none; }
+.casing { stroke: var(--surface); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.river { stroke: var(--river); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.arrow { fill: var(--river); }
+.qlab { fill: var(--muted); font-family: var(--font-mono); }
+.mirror { stroke: var(--river); fill: none; opacity: .6; }
+
+/* table */
+h2 { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 32px; line-height: 1.1;
+  margin: 0 0 8px; text-wrap: balance; }
+.section-lede { margin: 0 0 16px; max-width: 70ch; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.legend .k-new::before { background: var(--river); }
+.legend .k-fix::before { background: var(--fix); }
+.tablebox { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); max-height: 640px; overflow-y: auto; }
+table { border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { padding: 5px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+thead th { position: sticky; top: 0; background: var(--surface); font-family: var(--font-label); font-size: 13px;
+  letter-spacing: .05em; color: var(--muted); font-weight: 600; text-align: right; vertical-align: bottom; }
+thead th small { display: block; font-family: var(--font-body); letter-spacing: 0; font-weight: 400; font-size: 12px; text-transform: none; }
+td:first-child, th:first-child { text-align: left; color: var(--muted); }
+td.new { color: var(--river); font-weight: 500; }
+td.fix { color: var(--fix); font-weight: 500; }
+td.fix s { color: var(--muted); font-weight: 400; margin-right: 6px; }
+td.na { color: var(--rule); }
+
+.method { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.method > div { min-width: 0; }
+.method h3 { font-family: var(--font-label); font-weight: 600; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+.method p { margin: 0; color: var(--muted); max-width: 46ch; }
+footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 14px; }
+footer a, .lede a, .section-lede a { color: var(--river); }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .method { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .gallery { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+}
+</style>
+
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <div class="label">OEIS <a href="https://oeis.org/A076906">A076906</a> · A076907 · A077550 and relatives</div>
+      <h1>Rivers at the Crossroads</h1>
+      <p class="lede">A river flows in from infinity in the south-west quarter of a crossroads, crosses the two roads
+        <b>n</b> times without ever crossing itself, and flows off to infinity again. How many different courses can
+        it take? Two courses count as the same if one can be slid into the other without moving a crossing off its road.</p>
+      <p class="lede muted">Pick a crossing count and click any river to see it large. Its itinerary lists the roads it
+        crosses in order: the west, south, east and north arms of the crossroads.</p>
+      <div class="facts" id="facts"></div>
+    </div>
+    <figure class="viewer" aria-label="Selected river">
+      <svg id="big" viewBox="-5 -5 10 10" role="img" aria-labelledby="big-title"><title id="big-title">Selected river</title></svg>
+      <div class="meta">
+        <div class="itin" id="itin"></div>
+        <div class="sub" id="sub"></div>
+      </div>
+    </figure>
+  </section>
+
+  <section>
+    <div class="controls">
+      <div class="group">
+        <span class="label" id="n-label">Crossings n</span>
+        <div class="seg" id="nseg" role="group" aria-labelledby="n-label"></div>
+      </div>
+      <div class="group">
+        <label class="label" for="family">Which rivers</label>
+        <select id="family">
+          <option value="orbits">Up to rotation and reflection, undirected (A077550)</option>
+          <option value="far">Directed, south-west to the far side (A076906)</option>
+          <option value="any">Directed, from the south-west to anywhere (A076907)</option>
+        </select>
+      </div>
+      <p class="count-note" id="count-note"></p>
+    </div>
+    <div class="gallery" id="gallery" style="margin-top:16px"></div>
+  </section>
+
+  <section>
+    <h2>The counts</h2>
+    <p class="section-lede">Every column comes from one transfer-matrix computation of directed rivers that start in
+      the south-west quarter; undirected and symmetry classes follow by Burnside's lemma. Terms past the old ends of the
+      entries are new; four earlier values do not survive recomputation.</p>
+    <div class="legend"><span class="k-new">new term</span><span class="k-fix">corrected (old value struck through)</span></div>
+    <div class="tablebox"><table id="table"></table></div>
+  </section>
+
+  <section class="method">
+    <div>
+      <h3>Drawing a river</h3>
+      <p>Squaring a quarter of the plane opens it into a half-plane, with both of its roads on the edge. There every
+        stretch of river between two crossings becomes a plain semicircle. Taking the square root again bends the
+        semicircles back into the quarter, so the river meets each road at a right angle.</p>
+    </div>
+    <div>
+      <h3>Counting rivers</h3>
+      <p>A cut line sweeps the plane: along the west road, down the north road, around the junction, down the south road
+        and out along the east road. At each crossing a river strand either ends at the road or starts there, and the
+        cut keeps track of how the open strands are linked. That is Jensen's transfer matrix for meanders, bent around a
+        crossroads.</p>
+    </div>
+    <div>
+      <h3>Symmetric rivers</h3>
+      <p>A river can be its own mirror image only across an axis (odd n) or a diagonal (even n). Its two halves are then
+        open meanders (<a href="https://oeis.org/A005316">A005316</a>) or meanders across two parallel roads
+        (<a href="https://oeis.org/A076876">A076876</a>), so the classes up to symmetry come almost for free.</p>
+    </div>
+  </section>
+
+  <footer>Computed by James Guillochon with Claude, November 2026. Gallery curves enumerated directly; counts by
+    transfer matrix, checked against every known term, against a brute-force count to n = 8, and against mirror-image
+    runs that take different routes through the computation. Write-up, programs, logs and b-files:
+    <a href="https://github.com/guillochon/oeis-results/tree/main/A076906">oeis-results/A076906</a>.</footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+(() => {
+  const D = window.MEANDERS;
+  const RAY = ["W", "S", "E", "N"];
+  const RAYNAME = ["west", "south", "east", "north"];
+  const QNAME = ["south-west", "south-east", "north-east", "north-west"];
+  const QSIGN = ["(−,−)", "(+,−)", "(+,+)", "(−,+)"];
+  const ANG = [Math.PI, 1.5 * Math.PI, 0, 0.5 * Math.PI];   // ray angles, y up
+  const NS = "http://www.w3.org/2000/svg";
+  const rho = k => k + 1;                                   // distance of the k-th crossing on a ray
+
+  // complex helpers on [re, im]
+  const csqrt = ([a, b]) => { const r = Math.hypot(a, b), t = Math.atan2(b, a) / 2, s = Math.sqrt(r); return [s * Math.cos(t), s * Math.sin(t)]; };
+  const rot = ([a, b], t) => [a * Math.cos(t) - b * Math.sin(t), a * Math.sin(t) + b * Math.cos(t)];
+
+  // Points of the river, in order.  Arc i lies in quadrant q (between rays q and q+1); in the squared plane its
+  // ends sit on the real axis (ray q at +rho^2, ray q+1 at -rho^2) and it is a semicircle, or a vertical ray to infinity.
+  function riverPoints(c, extent) {
+    const [sq, eq, path] = c;
+    const T = 3 * extent * extent;
+    const pts = [];
+    const wpos = (q, [r, k]) => (r === q ? 1 : -1) * rho(k) * rho(k);
+    const back = (q, w) => { const z = rot(csqrt(w), ANG[q]); return [z[0], -z[1]]; };
+    let q = sq;
+    const stops = [null, ...path, null];
+    for (let i = 0; i + 1 < stops.length; i++) {
+      const P = stops[i], Q = stops[i + 1];
+      const seg = [];
+      if (P && Q) {
+        const w1 = wpos(q, P), w2 = wpos(q, Q), c0 = (w1 + w2) / 2, R = Math.abs(w1 - w2) / 2;
+        const a0 = w1 > w2 ? 0 : Math.PI, a1 = w1 > w2 ? Math.PI : 0;
+        for (let j = 0; j <= 40; j++) { const a = a0 + (a1 - a0) * j / 40; seg.push([c0 + R * Math.cos(a), R * Math.sin(a)]); }
+      } else if (P || Q) {
+        const w = wpos(q, P || Q);
+        for (let j = 0; j <= 30; j++) { const t = T * Math.pow(j / 30, 2.2); seg.push([w, t]); }
+        if (!P) seg.reverse();
+      } else {                                     // n = 0: never happens in the gallery
+        seg.push([-T, 1], [T, 1]);
+      }
+      for (const w of seg) pts.push(back(q, w));
+      if (Q) q = (q === Q[0]) ? (Q[0] + 3) % 4 : Q[0];   // crossing ray r swaps quadrant r <-> r-1
+    }
+    return pts;
+  }
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function draw(svg, c, opts) {
+    while (svg.lastChild && svg.lastChild.nodeName !== "title") svg.removeChild(svg.lastChild);
+    const maxr = Math.max(1, ...c[2].map(p => rho(p[1])));
+    const E = maxr + 1.15;
+    svg.setAttribute("viewBox", `${-E} ${-E} ${2 * E} ${2 * E}`);
+    const u = 2 * E / (opts.px || 120);                    // one screen pixel in user units
+    const rw = Math.max(0.16, 4.5 * u), cw = Math.max(0.025, 0.9 * u);
+    el("line", { class: "road", x1: -E, y1: 0, x2: E, y2: 0, "stroke-width": rw }, svg);
+    el("line", { class: "road", x1: 0, y1: -E, x2: 0, y2: E, "stroke-width": rw }, svg);
+    const dash = `${8 * u} ${7 * u}`;
+    el("line", { class: "centre", x1: -E, y1: 0, x2: E, y2: 0, "stroke-width": cw, "stroke-dasharray": dash }, svg);
+    el("line", { class: "centre", x1: 0, y1: -E, x2: 0, y2: E, "stroke-width": cw, "stroke-dasharray": dash }, svg);
+    if (opts.big) {
+      const L = E - 14 * u;
+      [[-1, 1], [1, 1], [1, -1], [-1, -1]].forEach(([sx, sy], i) => {
+        const t = el("text", { class: "qlab", x: sx * L, y: sy * L, "text-anchor": sx < 0 ? "start" : "end",
+          "dominant-baseline": sy < 0 ? "hanging" : "auto", "font-size": 13 * u }, svg);
+        t.textContent = QSIGN[i];              // corners listed Q3, Q4, Q1, Q2 (svg y points down)
+      });
+    }
+    if (opts.mirror) {
+      const m = opts.mirror, md = `${5 * u} ${5 * u}`;
+      if (m === "x") el("line", { class: "mirror", x1: -E, y1: 0, x2: E, y2: 0, "stroke-width": cw * 1.6, "stroke-dasharray": md }, svg);
+      if (m === "y") el("line", { class: "mirror", x1: 0, y1: -E, x2: 0, y2: E, "stroke-width": cw * 1.6, "stroke-dasharray": md }, svg);
+      if (m === "d") el("line", { class: "mirror", x1: -E, y1: E, x2: E, y2: -E, "stroke-width": cw * 1.6, "stroke-dasharray": md }, svg);
+      if (m === "a") el("line", { class: "mirror", x1: -E, y1: -E, x2: E, y2: E, "stroke-width": cw * 1.6, "stroke-dasharray": md }, svg);
+    }
+    const pts = riverPoints(c, E);
+    const d = "M" + pts.map(p => p[0].toFixed(3) + " " + p[1].toFixed(3)).join("L");
+    const vw = Math.max(0.09, 2.6 * u);
+    el("path", { class: "casing", d, "stroke-width": vw + 4 * u }, svg);
+    el("path", { class: "river", d, "stroke-width": vw }, svg);
+    if (opts.arrow && c[2].length) {
+      // arrowhead where the river leaves the frame
+      let k = pts.length - 1;
+      while (k > 1 && (Math.abs(pts[k][0]) > E - 10 * u || Math.abs(pts[k][1]) > E - 10 * u)) k--;
+      const [x, y] = pts[k], [px, py] = pts[Math.max(0, k - 2)];
+      const a = Math.atan2(y - py, x - px), s = 7 * u;
+      const tri = [[x + s * Math.cos(a), y + s * Math.sin(a)], [x + s * Math.cos(a + 2.5), y + s * Math.sin(a + 2.5)],
+        [x + s * Math.cos(a - 2.5), y + s * Math.sin(a - 2.5)]];
+      el("path", { class: "arrow", d: "M" + tri.map(p => p.join(" ")).join("L") + "Z" }, svg);
+    }
+  }
+
+  // which mirror fixes an undirected curve (orbit size 4), if any
+  function mirrorOf(c) {
+    const [sq, eq] = c;
+    const pair = [sq, eq].sort().join("");
+    if (c[2].length % 2) return (pair === "03" || pair === "12") ? "x" : "y";   // Q3-Q2 / Q4-Q1 across x
+    return (pair === "00" || pair === "22" || pair === "13") ? "d" : "a";       // y = x fixes Q3 and Q1
+  }
+
+  const nseg = document.getElementById("nseg"), fam = document.getElementById("family");
+  const gallery = document.getElementById("gallery"), big = document.getElementById("big");
+  const state = { n: 6, family: "orbits", idx: 0 };
+  try { const s = JSON.parse(localStorage.getItem("crossroads-view") || "{}"); Object.assign(state, s); } catch (e) {}
+
+  function list() {
+    if (state.family === "orbits") return D.orbits[state.n] || [];
+    const all = D.directed[state.n] || [];
+    if (state.family === "any") return all;
+    const target = state.n % 2 ? 1 : 2;
+    return all.filter(c => c[1] === target);
+  }
+  function maxN() { return state.family === "orbits" ? Math.max(...Object.keys(D.orbits).map(Number)) : Math.max(...Object.keys(D.directed).map(Number)); }
+
+  function itinHTML(c) {
+    return c[2].map(p => RAY[p[0]]).join("<i>·</i>");
+  }
+
+  function select(i) {
+    const L = list();
+    state.idx = Math.min(i, L.length - 1);
+    const c = L[state.idx];
+    const sym = state.family === "orbits" && c[3] === 4;
+    draw(big, c, { px: 520, big: true, arrow: state.family !== "orbits", mirror: sym ? mirrorOf(c) : null });
+    document.getElementById("itin").innerHTML = itinHTML(c);
+    const from = QNAME[c[0]], to = QNAME[c[1]];
+    let sub = state.family === "orbits" ? `between the ${from} and ${to} quarters` : `from the ${from} to the ${to} quarter`;
+    if (sym) sub += " · its own mirror image (dashed)";
+    else if (state.family === "orbits") sub += " · one of 8 mirror and rotated copies";
+    document.getElementById("sub").textContent = sub;
+    gallery.querySelectorAll(".card").forEach((b, j) => b.setAttribute("aria-current", j === state.idx ? "true" : "false"));
+    try { localStorage.setItem("crossroads-view", JSON.stringify(state)); } catch (e) {}
+  }
+
+  function render() {
+    if (state.n > maxN()) state.n = maxN();
+    nseg.innerHTML = "";
+    for (let n = 1; n <= maxN(); n++) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = n; b.id = "n" + n;
+      b.setAttribute("aria-pressed", n === state.n ? "true" : "false");
+      b.addEventListener("click", () => { state.n = n; state.idx = 0; render(); });
+      nseg.appendChild(b);
+    }
+    fam.value = state.family;
+    const L = list();
+    const word = state.family === "orbits" ? "classes" : "rivers";
+    document.getElementById("count-note").innerHTML = `<b>${L.length}</b> ${word} with ${state.n} crossing${state.n > 1 ? "s" : ""}`;
+    gallery.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    L.forEach((c, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "card" + (state.family === "orbits" && c[3] === 4 ? " sym" : "");
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "River crossing " + c[2].map(p => RAYNAME[p[0]]).join(", "));
+      draw(svg, c, { px: 120, arrow: state.family !== "orbits", mirror: null });
+      b.appendChild(svg);
+      const cap = document.createElement("div");
+      cap.className = "cap";
+      cap.textContent = c[2].map(p => RAY[p[0]]).join(" ") + (state.family === "orbits" && c[3] === 4 ? " · mirror" : "");
+      b.appendChild(cap);
+      b.addEventListener("click", () => select(i));
+      frag.appendChild(b);
+    });
+    gallery.appendChild(frag);
+    select(Math.min(state.idx, L.length - 1));
+  }
+  fam.addEventListener("change", () => { state.family = fam.value; state.idx = 0; render(); });
+
+  // count table
+  const KNOWN = { A076906: 20, A076907: 20, A077551: 20, A076875: 7, A077550: 7, A077556: 7 };
+  const OLD = { A076875: { 6: 176 }, A077550: { 5: 21, 7: 131 }, A077556: { 7: 239 } };
+  const COLS = [
+    ["A076906", "to the far side"], ["A076907", "anywhere"], ["A077551", "x road first"],
+    ["A076875", "undirected"], ["A077550", "up to symmetry"], ["A077556", "undirected, x first"]];
+  function table() {
+    const C = D.counts, tb = document.getElementById("table");
+    if (!C) { tb.innerHTML = "<tr><td>Counts not yet combined.</td></tr>"; return; }
+    const N = Math.max(...COLS.map(([k]) => (C[k] || []).length)) - 1;
+    let h = "<thead><tr><th>n</th>" + COLS.map(([k, s]) => `<th><a href="https://oeis.org/${k}" style="color:inherit">${k}</a><small>${s}</small></th>`).join("") + "</tr></thead><tbody>";
+    for (let n = 0; n <= N; n++) {
+      h += `<tr><td>${n}</td>`;
+      for (const [k] of COLS) {
+        const v = (C[k] || [])[n];
+        if (v === undefined || v === null) { h += '<td class="na">·</td>'; continue; }
+        const old = OLD[k] && OLD[k][n];
+        if (old) h += `<td class="fix"><s>${old}</s>${v}</td>`;
+        else h += `<td class="${n > KNOWN[k] ? "new" : ""}">${v}</td>`;
+      }
+      h += "</tr>";
+    }
+    tb.innerHTML = h + "</tbody>";
+    const a906 = C.A076906, nNew = a906.length - 1 - KNOWN.A076906;
+    document.getElementById("facts").innerHTML =
+      `<div class="fact"><b>${a906.length - 1}</b><span>largest n computed (was 20)</span></div>` +
+      `<div class="fact"><b>${Object.values(KNOWN).reduce((s, k, i) => s + Math.max(0, (C[Object.keys(KNOWN)[i]] || []).length - 1 - k), 0)}</b><span>new terms across six entries</span></div>` +
+      `<div class="fact"><b>4</b><span>old values corrected</span></div>`;
+  }
+
+  render();
+  table();
+})();
+</script>
+</html>
